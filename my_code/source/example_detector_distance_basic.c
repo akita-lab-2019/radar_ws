@@ -11,7 +11,6 @@
 #include "acc_rss.h"
 #include "acc_version.h"
 
-
 /**
  * @brief Example that shows how to use the distance basic detector
  *
@@ -27,20 +26,28 @@
 
 typedef struct
 {
-	uint32_t        count;
+	uint32_t count;
 	acc_sensor_id_t sensor;
-	float           range_start;
-	float           range_length;
+	float range_start;
+	float range_length;
 } input_t;
 
 static bool parse_input(int argc, char *argv[], input_t *input);
 
-
 static acc_hal_t hal;
-
 
 int main(int argc, char *argv[])
 {
+	FILE *fp;
+	char filename[] = "data.csv";
+
+	/* ファイルオープン */
+	if ((fp = fopen(filename, "w")) == NULL)
+	{
+		fprintf(stderr, "ファイルのオープンに失敗しました.\n");
+		return EXIT_FAILURE;
+	}
+
 	input_t input;
 
 	if (!acc_driver_hal_init())
@@ -80,7 +87,9 @@ int main(int argc, char *argv[])
 	{
 		reflection = acc_detector_distance_basic_get_reflection(handle);
 
-		printf("%d mm (%u)\n", (int)(reflection.distance * 1000.0f), (unsigned int)reflection.amplitude);
+		printf("dist: %d[mm], amp:%u\n", (int)(reflection.distance * 1000.0f), (unsigned int)reflection.amplitude);
+
+		fprintf(fp, "%d, %u\n", (int)(reflection.distance * 1000.0f), (unsigned int)reflection.amplitude);
 
 		hal.os.sleep_us(200000);
 
@@ -91,26 +100,26 @@ int main(int argc, char *argv[])
 
 	acc_rss_deactivate();
 
+	fclose(fp);
+
 	return EXIT_SUCCESS;
 }
 
-
 bool parse_input(int argc, char *argv[], input_t *input)
 {
-	input->count        = 0;
-	input->sensor       = 1;
-	input->range_start  = 0.2f;
+	input->count = 0;
+	input->sensor = 1;
+	input->range_start = 0.2f;
 	input->range_length = 0.4f;
 
 	static struct option long_options[] =
-	{
-		{"count",            required_argument, 0, 'c'},
-		{"range-start",      required_argument, 0, 'r'},
-		{"range-length",     required_argument, 0, 'l'},
-		{"sensor",           required_argument, 0, 's'},
-		{"help",             no_argument,       0, 'h'},
-		{NULL,               0,                 NULL, 0}
-	};
+		{
+			{"count", required_argument, 0, 'c'},
+			{"range-start", required_argument, 0, 'r'},
+			{"range-length", required_argument, 0, 'l'},
+			{"sensor", required_argument, 0, 's'},
+			{"help", no_argument, 0, 'h'},
+			{NULL, 0, NULL, 0}};
 
 	int character_code;
 	int option_index = 0;
@@ -119,41 +128,41 @@ bool parse_input(int argc, char *argv[], input_t *input)
 	{
 		switch (character_code)
 		{
-			case 'c':
-			{
-				input->count = atoi(optarg);
-				break;
-			}
+		case 'c':
+		{
+			input->count = atoi(optarg);
+			break;
+		}
 
-			case 'r':
-			{
-				input->range_start = strtof(optarg, NULL);
-				break;
-			}
+		case 'r':
+		{
+			input->range_start = strtof(optarg, NULL);
+			break;
+		}
 
-			case 'l':
-			{
-				input->range_length = strtof(optarg, NULL);
-				break;
-			}
+		case 'l':
+		{
+			input->range_length = strtof(optarg, NULL);
+			break;
+		}
 
-			case 's':
-			{
-				input->sensor = atoi(optarg);
-				break;
-			}
+		case 's':
+		{
+			input->sensor = atoi(optarg);
+			break;
+		}
 
-			case 'h':
-			case '?':
-			{
-				fprintf(stderr, "-c, --count         The number of reflections to get, 0 is infinite, default 0\n");
-				fprintf(stderr,
-				        "-r, --range-start   The start range in meters where the detector will look for reflections, default 0.2\n");
-				fprintf(stderr,
-				        "-l, --range-length  The range length in meters where the detector will look for reflections, default 0.2\n");
-				fprintf(stderr, "-s, --sensor        The position where the sensor is connected, default 1\n");
-				return false;
-			}
+		case 'h':
+		case '?':
+		{
+			fprintf(stderr, "-c, --count         The number of reflections to get, 0 is infinite, default 0\n");
+			fprintf(stderr,
+					"-r, --range-start   The start range in meters where the detector will look for reflections, default 0.2\n");
+			fprintf(stderr,
+					"-l, --range-length  The range length in meters where the detector will look for reflections, default 0.2\n");
+			fprintf(stderr, "-s, --sensor        The position where the sensor is connected, default 1\n");
+			return false;
+		}
 		}
 	}
 
