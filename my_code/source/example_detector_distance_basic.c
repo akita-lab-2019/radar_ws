@@ -1,15 +1,15 @@
-// Copyright (c) Acconeer AB, 2018-2019
-// All rights reserved
-
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "acc_definitions.h"
 #include "acc_detector_distance_basic.h"
 #include "acc_driver_hal.h"
 #include "acc_rss.h"
 #include "acc_version.h"
+
+const double period_sec = 0.1; // 実行周期[s]
 
 /**
  * @brief Example that shows how to use the distance basic detector
@@ -38,10 +38,18 @@ static acc_hal_t hal;
 
 int main(int argc, char *argv[])
 {
+	// ログファイル名の生成処理
 	FILE *fp;
-	char filename[] = "data.csv";
+	char filename[64] = "data.csv";
+	char time_str[32] = "00_00_00_00_00";
 
-	/* ファイルオープン */
+	time_t t = time(NULL);
+	strftime(time_str, sizeof(time_str), "%m_%d_%H_%M_%S", localtime(&t));
+
+	sprintf(filename, "log/%s.csv", time_str);
+	printf("Log will be saved to \"%s\"\n", filename);
+
+	// ファイルを開く
 	if ((fp = fopen(filename, "w")) == NULL)
 	{
 		fprintf(stderr, "ファイルのオープンに失敗しました.\n");
@@ -49,7 +57,6 @@ int main(int argc, char *argv[])
 	}
 
 	input_t input;
-
 	if (!acc_driver_hal_init())
 	{
 		return EXIT_FAILURE;
@@ -86,21 +93,22 @@ int main(int argc, char *argv[])
 	while ((input.count == 0) || count > 0)
 	{
 		reflection = acc_detector_distance_basic_get_reflection(handle);
+		double sec = (double)count * period_sec;
+		double dis = (double)reflection.distance;
+		int amp = reflection.amplitude;
 
-		printf("dist: %d[mm], amp:%u\n", (int)(reflection.distance * 1000.0f), (unsigned int)reflection.amplitude);
+		printf("time:%5.2lf, dis: %f[m], amp:%u\n", sec, dis, amp);
+		fprintf(fp, "%5.2lf, %f, %u\n", sec, dis, amp);
 
-		fprintf(fp, "%d, %u\n", (int)(reflection.distance * 1000.0f), (unsigned int)reflection.amplitude);
+		hal.os.sleep_us(period_sec * 1000000);
 
-		hal.os.sleep_us(200000);
-
-		count--;
+		count++;
 	}
 
-	acc_detector_distance_basic_destroy(&handle);
-
-	acc_rss_deactivate();
-
 	fclose(fp);
+
+	acc_detector_distance_basic_destroy(&handle);
+	acc_rss_deactivate();
 
 	return EXIT_SUCCESS;
 }

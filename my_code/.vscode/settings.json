@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "xutility": "c"
+        "xutility": "c",
+        "acc_detector_distance_peak.h": "c",
+        "system_error": "c",
+        "xlocale": "c"
     }
 }
