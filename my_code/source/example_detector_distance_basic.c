@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 		double dis = (double)reflection.distance;
 		int amp = reflection.amplitude;
 
-		printf("time:%5.2lf, dis: %f[m], amp:%u\n", sec, dis, amp);
+		printf("time:%5.2lf, dis: %.2f[m], amp:%u\n", sec, dis, amp);
 		fprintf(fp, "%5.2lf, %f, %u\n", sec, dis, amp);
 
 		hal.os.sleep_us(period_sec * 1000000);
