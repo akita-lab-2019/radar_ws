@@ -15,6 +15,8 @@
 
 #include "acc_version.h"
 
+const double period_sec = 0.05; // 実行周期[s]
+
 /**
  * @brief Example that shows how to use the envelope service
  *
@@ -128,17 +130,26 @@ acc_service_status_t execute_envelope_with_blocking_calls(acc_service_configurat
 
     uint16_t data[data_len];
 
-    // センサの状態を取得
-    acc_service_envelope_result_info_t result_info;
-    acc_service_status_t service_status = acc_service_activate(handle);
-
-    // センサの状態に応じて処理を振り分け
-    if (service_status == ACC_SERVICE_STATUS_OK)
+    // 1行目の記入
+    for (uint_fast16_t index = 0; index < data_len; index++)
     {
-        // センサがアクティブ
-        // 5回測定してみる
-        uint_fast8_t sweep_count = 5;
-        while (sweep_count > 0)
+        double now_depth = measure_start_dis + index * index_to_meter; // [m]
+        fprintf(fp, ",%f", now_depth);
+    }
+
+    acc_service_status_t service_status = acc_service_activate(handle);
+    uint16_t count = 0;
+    // センサの状態を取得
+    while (true)
+    {
+        double sec = (double)count * period_sec;
+        fprintf(fp, "\n%f", sec);
+
+        acc_service_envelope_result_info_t result_info;
+        service_status = acc_service_activate(handle);
+
+        // センサの状態に応じて処理を振り分け
+        if (service_status == ACC_SERVICE_STATUS_OK)
         {
             // センサから包絡線データを取得する
             // この関数は，次のスイープがセンサーから到着し，包絡線データが「data」配列にコピーされるまでブロックする
@@ -146,25 +157,10 @@ acc_service_status_t execute_envelope_with_blocking_calls(acc_service_configurat
 
             if (service_status == ACC_SERVICE_STATUS_OK)
             {
-                // 計測データの表示
-                // printf("包絡線データシーケンス番号: %u\n", (unsigned int)result_info.sequence_number);
-                // printf("包絡線データ:\n");
                 for (uint_fast16_t index = 0; index < data_len; index++)
                 {
-                    double now_depth = measure_start_dis + index * index_to_meter; // [m]
-                    // // 8データおきに改行
-                    // if (index && !(index % 8))
-                    // {
-                    //     printf("\n");
-                    // }
-
-                    printf("%6u", (unsigned int)(data[index]));
-
-                    // CSVに書き込むのは最後の測定の結果のみ
-                    if (sweep_count == 1)
-                    {
-                        fprintf(fp, "%f, %u\n", now_depth, data[index]);
-                    }
+                    // printf("%6u", (unsigned int)(data[index]));
+                    fprintf(fp, ",%u", data[index]);
                 }
 
                 printf("\n");
@@ -174,23 +170,16 @@ acc_service_status_t execute_envelope_with_blocking_calls(acc_service_configurat
                 printf("エンベロープデータが正しく取得されませんでした\n");
             }
 
-            sweep_count--;
+            count++;
+            hal.os.sleep_us(period_sec * 1000000);
 
-            // Show what happens if application is late
-            // アプリが遅れた場合，なにが起こるのかを見せる
-            // ＝最後だけワンテンポ時間をおいて測定してみる
-            if (sweep_count == 1)
-            {
-                hal.os.sleep_us(200000);
-            }
+            // 測定を終了
+            service_status = acc_service_deactivate(handle);
         }
-
-        // 測定を終了
-        service_status = acc_service_deactivate(handle);
-    }
-    else
-    {
-        printf("acc_service_activate() %u => %s\n", (unsigned int)service_status, acc_service_status_name_get(service_status));
+        else
+        {
+            printf("acc_service_activate() %u => %s\n", (unsigned int)service_status, acc_service_status_name_get(service_status));
+        }
     }
 
     acc_service_destroy(&handle);
