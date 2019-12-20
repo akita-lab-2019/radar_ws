@@ -3,6 +3,11 @@
         "xutility": "c",
         "acc_detector_distance_peak.h": "c",
         "system_error": "c",
-        "xlocale": "c"
+        "xlocale": "c",
+        "acc_version.h": "c",
+        "acc_sweep_configuration.h": "c",
+        "acc_service_envelope.h": "c",
+        "acc_service.h": "c",
+        "acc_driver_hal.h": "c"
     }
 }

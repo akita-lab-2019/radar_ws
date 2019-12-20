@@ -16,53 +16,44 @@
 #include "acc_version.h"
 
 const double period_sec = 0.05; // 実行周期[s]
+const int use_sensor_list[2] = {1, 3};
 
-/**
- * @brief Example that shows how to use the envelope service
- *
- * This is an example on how the envelope service can be used.
- * The example executes as follows:
- *   - Activate Radar System Software (RSS)
- *   - Create an envelope service configuration (with blocking mode as default)
- *   - Create an envelope service using the previously created configuration
- *   - Activate the envelope service
- *   - Get the result and print it 5 times, where the last result is intentionally late
- *   - Create and activate envelope service
- *   - Destroy the envelope service configuration
- *   - Deactivate Radar System Software
- */
-
-static acc_service_status_t execute_envelope_with_blocking_calls(acc_service_configuration_t envelope_configuration);
-
-static void configure_sweeps(acc_service_configuration_t envelope_configuration);
+static acc_service_status_t execute_envelope_with_blocking_calls(int sensor_num, acc_service_handle_t handle);
+static acc_service_handle_t createHandle(acc_service_configuration_t envelope_configuration);
+void writeHeader(acc_service_handle_t handle);
+static void configure_sweeps(acc_service_configuration_t envelope_configuration, int id);
 
 static acc_hal_t hal;
 
-FILE *fp;
+int inited = 0;
+uint16_t count = 0;
+
+FILE *fp[2];
 
 int main(void)
 {
     // ログファイル名の生成処理
-    char filename[64] = "data.csv";
+    char filename[2][64];
     char time_str[32] = "00_00_00_00_00";
-
     time_t t = time(NULL);
     strftime(time_str, sizeof(time_str), "%m_%d_%H_%M_%S", localtime(&t));
-
-    sprintf(filename, "log/envelope_%s.csv", time_str);
-    printf("Log will be saved to \"%s\"\n", filename);
+    sprintf(filename[0], "log/%s_%d.csv", time_str, use_sensor_list[0]);
+    sprintf(filename[1], "log/%s_%d.csv", time_str, use_sensor_list[1]);
 
     // ファイルを開く
-    if ((fp = fopen(filename, "w")) == NULL)
+    if ((fp[0] = fopen(filename[0], "w")) == NULL)
+    {
+        fprintf(stderr, "ファイルのオープンに失敗しました.\n");
+        return EXIT_FAILURE;
+    }
+    if ((fp[1] = fopen(filename[1], "w")) == NULL)
     {
         fprintf(stderr, "ファイルのオープンに失敗しました.\n");
         return EXIT_FAILURE;
     }
 
     if (!acc_driver_hal_init())
-    {
         return EXIT_FAILURE;
-    }
 
     printf("Acconeer software version %s\n", ACC_VERSION);
 
@@ -74,45 +65,81 @@ int main(void)
     }
 
     // サービスコンフィグレーションを包絡線用に定義
-    acc_service_configuration_t envelope_configuration = acc_service_envelope_configuration_create();
-    if (envelope_configuration == NULL)
+    acc_service_configuration_t envelope_configuration[2];
+    envelope_configuration[0] = acc_service_envelope_configuration_create();
+    envelope_configuration[1] = acc_service_envelope_configuration_create();
+    if (envelope_configuration[0] == NULL)
     {
-        printf("acc_service_envelope_configuration_create()に失敗\n");
+        printf("0: acc_service_envelope_configuration_create()に失敗\n");
+        return EXIT_FAILURE;
+    }
+    if (envelope_configuration[1] == NULL)
+    {
+        printf("1: acc_service_envelope_configuration_create()に失敗\n");
         return EXIT_FAILURE;
     }
 
     // スイープの設定
-    configure_sweeps(envelope_configuration);
+    configure_sweeps(envelope_configuration[0], 1);
+    configure_sweeps(envelope_configuration[1], 3);
 
-    // ブロッキングコールでエンベロープを実行する
-    acc_service_status_t service_status;
-    service_status = execute_envelope_with_blocking_calls(envelope_configuration);
-
-    if (service_status != ACC_SERVICE_STATUS_OK)
+    // ハンドルの生成
+    acc_service_handle_t handle[2];
+    handle[0] = createHandle(envelope_configuration[0]);
+    handle[1] = createHandle(envelope_configuration[1]);
+    if (handle[0] == NULL || handle[1] == NULL)
     {
-        printf("execute_envelope_with_blocking_calls() => (%u) %s\n", (unsigned int)service_status, acc_service_status_name_get(service_status));
-        acc_service_envelope_configuration_destroy(&envelope_configuration);
         return EXIT_FAILURE;
     }
 
-    acc_service_envelope_configuration_destroy(&envelope_configuration);
+    // ブロッキングコールでエンベロープを実行する
+    acc_service_status_t service_status[2];
+    while (true)
+    {
+        service_status[0] = execute_envelope_with_blocking_calls(0, handle[0]);
+        service_status[1] = execute_envelope_with_blocking_calls(1, handle[1]);
+        count++;
+        hal.os.sleep_us(period_sec * 1000000);
+    }
+
+    if (service_status[0] != ACC_SERVICE_STATUS_OK)
+    {
+        acc_service_envelope_configuration_destroy(&envelope_configuration[0]);
+        return EXIT_FAILURE;
+    }
+
+    acc_service_envelope_configuration_destroy(&envelope_configuration[0]);
 
     acc_rss_deactivate();
 
     return EXIT_SUCCESS;
 }
 
-// ブロッキングコールでエンベロープを実行する
-acc_service_status_t execute_envelope_with_blocking_calls(acc_service_configuration_t envelope_configuration)
+// ハンドルの生成
+acc_service_handle_t createHandle(acc_service_configuration_t envelope_configuration)
 {
     // ハンドルの生成
     acc_service_handle_t handle = acc_service_create(envelope_configuration);
     if (handle == NULL)
     {
         printf("acc_service_createに失敗\n");
-        return ACC_SERVICE_STATUS_FAILURE_UNSPECIFIED;
     }
 
+    return handle;
+}
+double measure_start_dis;
+double measure_len;
+double measure_end_dis;
+uint16_t data_len;
+double index_to_meter;
+
+// void writeHeader(acc_service_handle_t handle)
+// {
+// }
+
+// ブロッキングコールでエンベロープを実行する
+acc_service_status_t execute_envelope_with_blocking_calls(int sensor_num, acc_service_handle_t handle)
+{
     // メタデータの取得
     acc_service_envelope_metadata_t envelope_metadata;
     acc_service_envelope_get_metadata(handle, &envelope_metadata);
@@ -122,73 +149,82 @@ acc_service_status_t execute_envelope_with_blocking_calls(acc_service_configurat
     uint16_t data_len = envelope_metadata.data_length;
     double index_to_meter = (double)(measure_len / data_len); // [m / point]
 
-    printf("始点    : %f [m]\n", measure_start_dis);
-    printf("測定距離: %f [m]\n", measure_len);
-    printf("終点    : %f [m]\n", measure_end_dis);
-    printf("データ長: %u    \n", data_len);
-    printf("分解能  : %f [m / point]\n", index_to_meter);
-
-    uint16_t data[data_len];
-
-    // 1行目の記入
-    for (uint_fast16_t index = 0; index < data_len; index++)
+    if (inited != 2)
     {
-        double now_depth = measure_start_dis + index * index_to_meter; // [m]
-        fprintf(fp, ",%f", now_depth);
+        printf("始点    : %f [m]\n", measure_start_dis);
+        printf("測定距離: %f [m]\n", measure_len);
+        printf("終点    : %f [m]\n", measure_end_dis);
+        printf("データ長: %u    \n", data_len);
+        printf("分解能  : %f [m / point]\n", index_to_meter);
+
+        // 1行目の記入
+        for (uint_fast16_t index = 0; index < data_len; index++)
+        {
+            double now_depth = measure_start_dis + index * index_to_meter; // [m]
+            fprintf(fp[sensor_num], ",%f", now_depth);
+        }
+
+        inited++;
     }
 
-    acc_service_status_t service_status = acc_service_activate(handle);
-    uint16_t count = 0;
     // センサの状態を取得
-    while (true)
+    acc_service_status_t service_status = acc_service_activate(handle);
+
+    double sec = (double)count * period_sec;
+    fprintf(fp[sensor_num], "\n%f", sec);
+
+    acc_service_envelope_result_info_t result_info;
+    // センサの状態に応じて処理を振り分け
+    if (service_status == ACC_SERVICE_STATUS_OK)
     {
-        double sec = (double)count * period_sec;
-        fprintf(fp, "\n%f", sec);
+        uint16_t data[2000];
+        // センサから包絡線データを取得する
+        // この関数は，次のスイープがセンサーから到着し，包絡線データが「data」配列にコピーされるまでブロックする
+        service_status = acc_service_envelope_get_next(handle, data, data_len, &result_info);
 
-        acc_service_envelope_result_info_t result_info;
-        service_status = acc_service_activate(handle);
+        double max_data = 0;
+        int max_data_index = 0;
+        for (int i = 0; i < data_len; i++)
+        {
+            if (max_data < data[i])
+            {
+                max_data_index = i;
+                max_data = data[i];
+            }
+        }
+        double distance_to_object = index_to_meter * max_data_index;
+        printf("%f", distance_to_object);
 
-        // センサの状態に応じて処理を振り分け
         if (service_status == ACC_SERVICE_STATUS_OK)
         {
-            // センサから包絡線データを取得する
-            // この関数は，次のスイープがセンサーから到着し，包絡線データが「data」配列にコピーされるまでブロックする
-            service_status = acc_service_envelope_get_next(handle, data, data_len, &result_info);
-
-            if (service_status == ACC_SERVICE_STATUS_OK)
+            for (uint_fast16_t index = 0; index < data_len; index++)
             {
-                for (uint_fast16_t index = 0; index < data_len; index++)
-                {
-                    // printf("%6u", (unsigned int)(data[index]));
-                    fprintf(fp, ",%u", data[index]);
-                }
-
-                printf("\n");
-            }
-            else
-            {
-                printf("エンベロープデータが正しく取得されませんでした\n");
+                // printf("%6u", (unsigned int)(data[index]));
+                fprintf(fp[sensor_num], ",%u", data[index]);
             }
 
-            count++;
-            hal.os.sleep_us(period_sec * 1000000);
-
-            // 測定を終了
-            service_status = acc_service_deactivate(handle);
+            printf("\n");
         }
         else
         {
-            printf("acc_service_activate() %u => %s\n", (unsigned int)service_status, acc_service_status_name_get(service_status));
+            printf("エンベロープデータが正しく取得されませんでした\n");
         }
+
+        // 測定を終了
+        service_status = acc_service_deactivate(handle);
+    }
+    else
+    {
+        printf("acc_service_activate() %u => %s\n", (unsigned int)service_status, acc_service_status_name_get(service_status));
     }
 
-    acc_service_destroy(&handle);
+    // acc_service_destroy(&handle);
 
     return service_status;
 }
 
 // スイープの設定
-void configure_sweeps(acc_service_configuration_t envelope_configuration)
+void configure_sweeps(acc_service_configuration_t envelope_configuration, int id)
 {
     acc_sweep_configuration_t sweep_configuration = acc_service_get_sweep_configuration(envelope_configuration);
 
@@ -199,22 +235,9 @@ void configure_sweeps(acc_service_configuration_t envelope_configuration)
     else
     {
         float start_m = 0.1f;
-        float length_m = 0.5f;
+        float length_m = 1.5f;
         float update_rate_hz = 100;
-        // Actual start  : 99  mm
-        // Actual length : 500 mm
-        // Actual end    : 600 mm
-        // Data length   : 1034
-
-        // サンプルコードのデフォルト値
-        // float start_m = 0.4f;
-        // float length_m = 0.5f;
-        // float update_rate_hz = 100;
-        // Actual start  : 400 mm
-        // Actual length : 499 mm
-        // Actual end    : 899 mm
-        // Data length   : 1033
-
+        acc_sweep_configuration_sensor_set(sweep_configuration, id);
         acc_sweep_configuration_requested_start_set(sweep_configuration, start_m);
         acc_sweep_configuration_requested_length_set(sweep_configuration, length_m);
         acc_sweep_configuration_repetition_mode_streaming_set(sweep_configuration, update_rate_hz);

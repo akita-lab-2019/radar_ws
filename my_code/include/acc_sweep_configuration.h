@@ -8,7 +8,6 @@
 
 #include "acc_definitions.h"
 
-
 /**
  * @defgroup Sweep Sweep Configuration
  *
@@ -16,7 +15,6 @@
  *
  * @{
  */
-
 
 /**
  * @brief Power save mode
@@ -41,14 +39,12 @@ typedef enum
 } acc_sweep_configuration_power_save_mode_enum_t;
 typedef uint32_t acc_sweep_configuration_power_save_mode_t;
 
-
 /**
  * @brief Sweep configuration container
  */
 struct acc_sweep_configuration;
 
 typedef struct acc_sweep_configuration *acc_sweep_configuration_t;
-
 
 /**
  * @brief Get the sensor id that is configured
@@ -58,7 +54,6 @@ typedef struct acc_sweep_configuration *acc_sweep_configuration_t;
  */
 acc_sensor_id_t acc_sweep_configuration_sensor_get(const acc_sweep_configuration_t configuration);
 
-
 /**
  * @brief Set the sensor id
  *
@@ -66,7 +61,6 @@ acc_sensor_id_t acc_sweep_configuration_sensor_get(const acc_sweep_configuration
  * @param[in] sensor_id The sensor id to set
  */
 void acc_sweep_configuration_sensor_set(acc_sweep_configuration_t configuration, acc_sensor_id_t sensor_id);
-
 
 /**
  * @brief Get the requested start of the range to sweep
@@ -76,7 +70,6 @@ void acc_sweep_configuration_sensor_set(acc_sweep_configuration_t configuration,
  */
 float acc_sweep_configuration_requested_start_get(const acc_sweep_configuration_t configuration);
 
-
 /**
  * @brief Set the requested start of the range to sweep
  *
@@ -84,7 +77,6 @@ float acc_sweep_configuration_requested_start_get(const acc_sweep_configuration_
  * @param[in] start_m The requested start in meters
  */
 void acc_sweep_configuration_requested_start_set(acc_sweep_configuration_t configuration, float start_m);
-
 
 /**
  * @brief Get the requested length of the range to sweep
@@ -94,7 +86,6 @@ void acc_sweep_configuration_requested_start_set(acc_sweep_configuration_t confi
  */
 float acc_sweep_configuration_requested_length_get(const acc_sweep_configuration_t configuration);
 
-
 /**
  * @brief Set the requested length of the range to sweep
  *
@@ -102,7 +93,6 @@ float acc_sweep_configuration_requested_length_get(const acc_sweep_configuration
  * @param[in] length_m The requested length in meters
  */
 void acc_sweep_configuration_requested_length_set(acc_sweep_configuration_t configuration, float length_m);
-
 
 /**
  * @brief Set the requested range to sweep, both start and length
@@ -113,7 +103,6 @@ void acc_sweep_configuration_requested_length_set(acc_sweep_configuration_t conf
  */
 void acc_sweep_configuration_requested_range_set(acc_sweep_configuration_t configuration, float start_m, float length_m);
 
-
 /**
  * @brief Set the repetition mode for sweeps to max frequency
  *
@@ -123,7 +112,6 @@ void acc_sweep_configuration_requested_range_set(acc_sweep_configuration_t confi
  * @param[in] configuration The sweep configuration to set max frequency mode in
  */
 void acc_sweep_configuration_repetition_mode_max_frequency_set(acc_sweep_configuration_t configuration);
-
 
 /**
  * @brief Set the repetition mode for sweeps to streaming mode
@@ -136,7 +124,6 @@ void acc_sweep_configuration_repetition_mode_max_frequency_set(acc_sweep_configu
  */
 void acc_sweep_configuration_repetition_mode_streaming_set(acc_sweep_configuration_t configuration, float update_rate);
 
-
 /**
  * @brief Get power save mode
  *
@@ -145,16 +132,14 @@ void acc_sweep_configuration_repetition_mode_streaming_set(acc_sweep_configurati
  */
 acc_sweep_configuration_power_save_mode_t acc_sweep_configuration_power_save_mode_get(const acc_sweep_configuration_t configuration);
 
-
 /**
  * @brief Set power save mode
  *
  * @param[in] configuration The sweep configuration to set power save mode in
  * @param[in] power_save_mode The power save mode to use
  */
-void acc_sweep_configuration_power_save_mode_set(acc_sweep_configuration_t                 configuration,
-                                                 acc_sweep_configuration_power_save_mode_t power_save_mode);
-
+void acc_sweep_configuration_power_save_mode_set(acc_sweep_configuration_t configuration,
+												 acc_sweep_configuration_power_save_mode_t power_save_mode);
 
 /**
  * @brief Get receiver gain setting
@@ -166,7 +151,6 @@ void acc_sweep_configuration_power_save_mode_set(acc_sweep_configuration_t      
  */
 float acc_sweep_configuration_receiver_gain_get(const acc_sweep_configuration_t configuration);
 
-
 /**
  * @brief Set receiver gain setting
  *
@@ -176,7 +160,6 @@ float acc_sweep_configuration_receiver_gain_get(const acc_sweep_configuration_t 
  * @param[in] gain Receiver gain setting, must be between 0.0 and 1.0
  */
 void acc_sweep_configuration_receiver_gain_set(acc_sweep_configuration_t configuration, float gain);
-
 
 /**
  * @brief Get TX disable mode
@@ -188,7 +171,6 @@ void acc_sweep_configuration_receiver_gain_set(acc_sweep_configuration_t configu
  */
 bool acc_sweep_configuration_tx_disable_get(const acc_sweep_configuration_t configuration);
 
-
 /**
  * @brief Set TX disable mode
  *
@@ -199,7 +181,6 @@ bool acc_sweep_configuration_tx_disable_get(const acc_sweep_configuration_t conf
  */
 void acc_sweep_configuration_tx_disable_set(acc_sweep_configuration_t configuration, bool tx_disable);
 
-
 /**
  * @brief Get 'Decrease TX emission' mode
  *
@@ -208,7 +189,6 @@ void acc_sweep_configuration_tx_disable_set(acc_sweep_configuration_t configurat
  */
 bool acc_sweep_configuration_decrease_tx_emission_get(const acc_sweep_configuration_t configuration);
 
-
 /**
  * @brief Set 'Decrease TX emission' mode
  *
@@ -216,7 +196,6 @@ bool acc_sweep_configuration_decrease_tx_emission_get(const acc_sweep_configurat
  * @param[in] decrease_tx_emission true or false
  */
 void acc_sweep_configuration_decrease_tx_emission_set(acc_sweep_configuration_t configuration, bool decrease_tx_emission);
-
 
 /**
  * @brief Get the hardware accelerated average samples
@@ -228,7 +207,6 @@ void acc_sweep_configuration_decrease_tx_emission_set(acc_sweep_configuration_t 
  */
 uint8_t acc_sweep_configuration_hw_accelerated_average_samples_get(const acc_sweep_configuration_t configuration);
 
-
 /**
  * @brief Set the hardware accelerated average samples
  *
@@ -238,7 +216,6 @@ uint8_t acc_sweep_configuration_hw_accelerated_average_samples_get(const acc_swe
  * @param[in] samples Hardware accelerated average samples, must be between 1 and 63, inclusive
  */
 void acc_sweep_configuration_hw_accelerated_average_samples_set(acc_sweep_configuration_t configuration, uint8_t samples);
-
 
 /**
  * @}
